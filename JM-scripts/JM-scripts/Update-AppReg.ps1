@@ -25,7 +25,7 @@ function Manage-AppRegistrations {
     $null = Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId 
     
     # Display all App Registrations with their internal notes
-    Get-AppRegistrationsWithNotes 
+    Get-AllAppRegistrations
     
     # Update missing internal notes
     Update-MissingInternalNotes
@@ -39,7 +39,7 @@ function Manage-AppRegistrations {
     Disconnect-MgGraph | Out-Null
 }
 
-function Get-AppRegistrationsWithNotes {
+function Get-AllAppRegistrations {
     $appRegs = Get-MgApplication -All
     foreach ($app in $appRegs) {
         Write-Host "App Name: $($app.DisplayName)"
