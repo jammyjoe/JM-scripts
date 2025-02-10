@@ -55,7 +55,7 @@ function Manage-AppRegistrations {
     Get-AllAppRegistrations 
     
     # Update missing internal notes
-    Update-MissingInternalNotes -NewNotes $NewNotes
+    Update-MissingInternalNotes
 
     # Update a specific app registration
     Update-AppRegistrationNotes -ObjectId $ObjectId -NewNotes $NewNotes
@@ -75,7 +75,8 @@ function Update-MissingInternalNotes {
     $appRegs = Get-MgApplication -All | Where-Object { [string]::IsNullOrEmpty($_.Notes) }
 
     foreach ($app in $appRegs) {
-        Update-MgApplication -ApplicationId $app.Id -Notes $NewNotes
+        $defaultNote = "Last updated on $(Get-Date)."
+        Update-MgApplication -ApplicationId $app.Id -Notes $defaultNote
         Write-Host "Updated $($app.DisplayName) with internal notes."
     }
 }
