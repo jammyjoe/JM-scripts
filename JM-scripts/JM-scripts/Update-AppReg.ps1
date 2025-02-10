@@ -1,8 +1,29 @@
 function main {
-    $TenantId = "" 
+    $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df"
+    
+    $ObjectId = ""                       # ObjectId for an App Registration to update
+    $ApplicationName = "Test"            # Application Name
+    $Purpose = "Testing"                 # The application's function
+    $OwningTeam = "Calypso"              # Department/Team Name
+    $PrimaryContact = "Jamil Munayem"    # Email or Distribution List
+    $CreatedBy = "Jamil Munayem"         # User/Service Principal
+    $CurrentStatus = "Active"            # Active / Deprecated / Under Review
+    
+    $NewNotes =
+"Application Name: $ApplicationName
+Purpose: $Purpose
+Owning Team: $OwningTeam
+Primary Contact: $PrimaryContact
+Created By: $CreatedBy
+Date Created: $(Get-Date)
+Current Status: $CurrentStatus
+
+Notes:"
 
     $Parameters = @{
-        TenantId    = $TenantId
+        TenantId = $TenantId
+        ObjectId = $ObjectId
+        NewNotes = $NewNotes 
       }
 
     # Call function with parameters
@@ -14,7 +35,13 @@ function Manage-AppRegistrations {
     param (
         [Parameter(Mandatory)]
         [Guid]
-        $TenantId
+        $TenantId,
+
+        [Guid]
+        $ObjectId,
+
+        [string]
+        $NewNotes
     )
     
     $requiredScopes = @(
@@ -25,16 +52,13 @@ function Manage-AppRegistrations {
     $null = Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId 
     
     # Display all App Registrations with their internal notes
-    Get-AllAppRegistrations
+    Get-AllAppRegistrations 
     
     # Update missing internal notes
-    Update-MissingInternalNotes
+    Update-MissingInternalNotes -NewNotes $NewNotes
 
     # Update a specific app registration
-     $AppId = ""    # Provide ObjectId of the app registration
-     $NewNotes = "" #Provide new notes for the app registration
-    
-     Update-AppRegistrationNotes -AppId $AppId -Notes $NewNotes
+    Update-AppRegistrationNotes -ObjectId $ObjectId -NewNotes $NewNotes
 
     Disconnect-MgGraph | Out-Null
 }
@@ -51,8 +75,7 @@ function Update-MissingInternalNotes {
     $appRegs = Get-MgApplication -All | Where-Object { [string]::IsNullOrEmpty($_.Notes) }
 
     foreach ($app in $appRegs) {
-        $defaultNote = "Last updated on $(Get-Date)."
-        Update-MgApplication -ApplicationId $app.Id -Notes $defaultNote
+        Update-MgApplication -ApplicationId $app.Id -Notes $NewNotes
         Write-Host "Updated $($app.DisplayName) with internal notes."
     }
 }
@@ -60,14 +83,16 @@ function Update-MissingInternalNotes {
 function Update-AppRegistrationNotes {
     param (
         [Parameter(Mandatory)]
-        [string]$AppId,
+        [string]
+        $ObjectId,
 
         [Parameter(Mandatory)]
-        [string]$Notes
-    )
+        [string]
+        $NewNotes
+        )
 
-    Update-MgApplication -ApplicationId $AppId -Notes $Notes
-    Write-Host "Updated App Registration ($AppId) with notes: $Notes"
+    Update-MgApplication -ApplicationId $ObjectId -Notes $NewNotes
+    Write-Host "Updated App Registration ($ObjectId) with notes: $NewNotes"
 }
 
 main
