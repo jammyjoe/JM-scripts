@@ -29,7 +29,7 @@ function Manage-AppRegistrations {
     # Update missing internal notes
     Update-MissingInternalNotes
 
-    # Update a specific app registration
+    # Update a specific App Registration internal notes
      $AppId = ""    # Provide ObjectId of the app registration
      $NewNotes = "" #Provide new notes for the app registration
     
