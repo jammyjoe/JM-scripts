@@ -1,11 +1,10 @@
 function main {
-    $TenantId = "" 
+    $TenantId = "" # Provide UKHO Tenant
 
     $Parameters = @{
         TenantId    = $TenantId
       }
 
-    # Call function with parameters
     Manage-AppRegistrations @Parameters
 }
 
