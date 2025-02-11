@@ -1,5 +1,5 @@
 function main {
-    $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df"
+    $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide UKHO Tenant
     
     $ObjectId = ""                       # ObjectId for an App Registration to update
     $ApplicationName = "Test"            # Application Name
@@ -26,7 +26,6 @@ Notes:"
         NewNotes = $NewNotes 
       }
 
-    # Call function with parameters
     Manage-AppRegistrations @Parameters
 }
 
@@ -57,7 +56,7 @@ function Manage-AppRegistrations {
     # Update missing internal notes
     Update-MissingInternalNotes
 
-    # Update a specific app registration
+    # Update a specific app registration internal notes
     Update-AppRegistrationNotes -ObjectId $ObjectId -NewNotes $NewNotes
 
     Disconnect-MgGraph | Out-Null
