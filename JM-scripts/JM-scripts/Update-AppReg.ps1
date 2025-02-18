@@ -1,13 +1,13 @@
 function main {
     $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide UKHO Tenant
-    $CsvFilePath ="D:\Users\MunayemJ\repos\Calypso\PowershellScripts\JM-scripts\JM-scripts\import.csv"
-    $SingleCsvFilePath ="D:\Users\MunayemJ\repos\Calypso\PowershellScripts\JM-scripts\JM-scripts\individual_import.csv"
+    $DefaultCsvFilePath ="D:\Users\MunayemJ\repos\Calypso\PowershellScripts\JM-scripts\JM-scripts\default_template.csv"
+    $IndividualCsvFilePath ="D:\Users\MunayemJ\repos\Calypso\PowershellScripts\JM-scripts\JM-scripts\individual_template.csv"
 
 
     $Parameters = @{
         TenantId    = $TenantId
-        CsvFilePath =  $CsvFilePath
-        SingleCsvFilePath = $SingleCsvFilePath
+        DefaultCsvFilePath =  $DefaultCsvFilePath
+        IndividualCsvFilePath = $IndividualCsvFilePath
       }
 
     Manage-AppRegistrations @Parameters
@@ -22,11 +22,11 @@ function Manage-AppRegistrations {
 
         [Parameter(Mandatory)]
         [string]
-        $CsvFilePath,
+        $DefaultCsvFilePath,
 
         [Parameter(Mandatory)]
         [string]
-        $SingleCsvFilePath
+        $IndividualCsvFilePath
     )
     
     $requiredScopes = @(
@@ -40,13 +40,13 @@ function Manage-AppRegistrations {
     Get-AllAppRegistrations 
     
     # Update missing internal notes
-    Update-MissingInternalNotes -CsvFilePath $CsvFilePath
+    Update-MissingInternalNotes -DefaultCsvFilePath $DefaultCsvFilePath
 
     # Update a specific App Registration internal notes
      $AppId = ""    # Provide ObjectId of the app registration
      $NewNotes = "" #Provide new notes for the app registration
     
-     Update-AppRegistrationNotes -SingleCsvFilePath $SingleCsvFilePath
+     Update-AppRegistrationNotes -IndividualCsvFilePath $IndividualCsvFilePath
 
     Disconnect-MgGraph | Out-Null
 }
@@ -62,11 +62,11 @@ function Get-AllAppRegistrations {
 function Update-MissingInternalNotes {
     param (
         [Parameter(Mandatory)]
-        [string]$CsvFilePath
+        [string]$DefaultCsvFilePath
     )
 
     # Import the CSV file.
-    $csvData = Import-Csv -Path $CsvFilePath
+    $csvData = Import-Csv -Path $DefaultCsvFilePath
 
     if ($csvData.Count -eq 0) {
         Write-Error "CSV file is empty. Please provide a default note template."
@@ -96,11 +96,11 @@ function Update-MissingInternalNotes {
 function Update-AppRegistrationNotes {
     param (
         [Parameter(Mandatory)]
-        [string]$SingleCsvFilePath
+        [string]$IndividualCsvFilePath
     )
 
     # Import the CSV file.
-    $csvData = Import-Csv -Path $SingleCsvFilePath
+    $csvData = Import-Csv -Path $IndividualCsvFilePath
 
     if ($csvData.Count -eq 0) {
         Write-Error "CSV file is empty. Please provide valid data."
@@ -120,7 +120,5 @@ function Update-AppRegistrationNotes {
         }
     }
 }
-
-
 
 main
