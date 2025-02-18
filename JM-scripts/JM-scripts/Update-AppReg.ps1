@@ -1,10 +1,13 @@
 function main {
     $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide UKHO Tenant
     $CsvFilePath ="D:\Users\MunayemJ\repos\Calypso\PowershellScripts\JM-scripts\JM-scripts\import.csv"
+    $SingleCsvFilePath ="D:\Users\MunayemJ\repos\Calypso\PowershellScripts\JM-scripts\JM-scripts\individual_import.csv"
+
 
     $Parameters = @{
         TenantId    = $TenantId
         CsvFilePath =  $CsvFilePath
+        SingleCsvFilePath = $SingleCsvFilePath
       }
 
     Manage-AppRegistrations @Parameters
@@ -19,7 +22,11 @@ function Manage-AppRegistrations {
 
         [Parameter(Mandatory)]
         [string]
-        $CsvFilePath
+        $CsvFilePath,
+
+        [Parameter(Mandatory)]
+        [string]
+        $SingleCsvFilePath
     )
     
     $requiredScopes = @(
@@ -39,7 +46,7 @@ function Manage-AppRegistrations {
      $AppId = ""    # Provide ObjectId of the app registration
      $NewNotes = "" #Provide new notes for the app registration
     
-     #Update-AppRegistrationNotes -AppId $AppId -Notes $NewNotes
+     Update-AppRegistrationNotes -SingleCsvFilePath $SingleCsvFilePath
 
     Disconnect-MgGraph | Out-Null
 }
@@ -78,7 +85,7 @@ function Update-MissingInternalNotes {
         Write-Host "Updating app registration $($app.Id) with the default note template..." -ForegroundColor Cyan
         try {
             Update-MgApplication -ApplicationId $app.Id -Notes $defaultNote
-            Write-Host "Successfully updated $($app.Id)." -ForegroundColor Green
+            Write-Host "Successfully updated $($app.Id).`n" -ForegroundColor Green
         }
         catch {
             Write-Host "Error updating $($app.Id): $_" -ForegroundColor Red
@@ -86,18 +93,34 @@ function Update-MissingInternalNotes {
     }
 }
 
-
 function Update-AppRegistrationNotes {
     param (
         [Parameter(Mandatory)]
-        [string]$AppId,
-
-        [Parameter(Mandatory)]
-        [string]$Notes
+        [string]$SingleCsvFilePath
     )
 
-    Update-MgApplication -ApplicationId $AppId -Notes $Notes
-    Write-Host "Updated App Registration ($AppId) with notes: $Notes"
+    # Import the CSV file.
+    $csvData = Import-Csv -Path $SingleCsvFilePath
+
+    if ($csvData.Count -eq 0) {
+        Write-Error "CSV file is empty. Please provide valid data."
+        return
+    }
+
+    foreach ($row in $csvData) {
+        Write-Host "Updating app registration $($row.ObjectId) with the following note:" -ForegroundColor Cyan
+        Write-Host $row.Note -ForegroundColor Yellow
+
+        try {
+            Update-MgApplication -ApplicationId $row.ObjectId -Notes $row.Note
+            Write-Host "Successfully updated $($row.ObjectId)." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Error updating $($row.ObjectId): $_" -ForegroundColor Red
+        }
+    }
 }
+
+
 
 main
