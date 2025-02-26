@@ -1,5 +1,5 @@
 function main {
-    $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide UKHO Tenant
+    $TenantId = "" # Provide UKHO Tenant
     
     $ObjectId = ""                       # ObjectId for an App Registration to update
     $ApplicationName = "Test"            # Application Name
@@ -63,18 +63,15 @@ function Manage-AppRegistrations {
 }
 
 function Get-AllAppRegistrations {
-    $appRegs = Get-MgApplication -All
-    foreach ($app in $appRegs) {
-        Write-Host "App Name: $($app.DisplayName)"
-        Write-Host "Internal Notes: $($app.Notes)`n"
-    }
+    $appRegs = Get-MgApplication -All | Select-Object DisplayName, Notes
+    $appRegs | Format-Table -AutoSize
 }
 
 function Update-MissingInternalNotes {
     $appRegs = Get-MgApplication -All | Where-Object { [string]::IsNullOrEmpty($_.Notes) }
+    $defaultNote = "Last updated on $(Get-Date)."
 
     foreach ($app in $appRegs) {
-        $defaultNote = "Last updated on $(Get-Date)."
         Update-MgApplication -ApplicationId $app.Id -Notes $defaultNote
         Write-Host "Updated $($app.DisplayName) with internal notes."
     }
@@ -90,6 +87,11 @@ function Update-AppRegistrationNotes {
         [string]
         $NewNotes
         )
+    
+    if ($NewNotes.Length -gt 1024) {
+        Write-Host "Error: Notes exceed 1024-character limit. Please shorten your input."
+        return
+    }
 
     Update-MgApplication -ApplicationId $ObjectId -Notes $NewNotes
     Write-Host "Updated App Registration ($ObjectId) with notes: $NewNotes"
