@@ -1,7 +1,7 @@
 function main {
-    $TenantId = "" # Provide UKHO Tenant
+    $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide UKHO Tenant
     
-    $ObjectId = ""                       # ObjectId for an App Registration to update
+    $ObjectId = "31082794-fcbb-49b2-a06b-bf17768a86b0"                       # ObjectId for an App Registration to update
     $ApplicationName = "Test"            # Application Name
     $Purpose = "Testing"                 # The application's function
     $OwningTeam = "Calypso"              # Department/Team Name
@@ -49,12 +49,6 @@ function Manage-AppRegistrations {
     
     # Connect to Microsoft Graph
     $null = Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId 
-    
-    # Display all App Registrations with their internal notes
-    Get-AllAppRegistrations 
-    
-    # Update missing internal notes
-    Update-MissingInternalNotes
 
     # Update a specific app registration internal notes
     Update-AppRegistrationNotes -ObjectId $ObjectId -NewNotes $NewNotes
@@ -62,20 +56,6 @@ function Manage-AppRegistrations {
     Disconnect-MgGraph | Out-Null
 }
 
-function Get-AllAppRegistrations {
-    $appRegs = Get-MgApplication -All | Select-Object DisplayName, Notes
-    $appRegs | Format-Table -AutoSize
-}
-
-function Update-MissingInternalNotes {
-    $appRegs = Get-MgApplication -All | Where-Object { [string]::IsNullOrEmpty($_.Notes) }
-    $defaultNote = "Last updated on $(Get-Date)."
-
-    foreach ($app in $appRegs) {
-        Update-MgApplication -ApplicationId $app.Id -Notes $defaultNote
-        Write-Host "Updated $($app.DisplayName) with internal notes."
-    }
-}
 
 function Update-AppRegistrationNotes {
     param (
