@@ -29,12 +29,6 @@ function Manage-AppRegistrations {
     # Update missing internal notes
     Update-MissingInternalNotes
 
-    # Update a specific App Registration internal notes
-     $AppId = ""    # Provide ObjectId of the app registration
-     $NewNotes = "" #Provide new notes for the app registration
-    
-     Update-AppRegistrationNotes -AppId $AppId -Notes $NewNotes
-
     Disconnect-MgGraph | Out-Null
 }
 
@@ -54,19 +48,6 @@ function Update-MissingInternalNotes {
         Update-MgApplication -ApplicationId $app.Id -Notes $defaultNote
         Write-Host "Updated $($app.DisplayName) with internal notes."
     }
-}
-
-function Update-AppRegistrationNotes {
-    param (
-        [Parameter(Mandatory)]
-        [string]$AppId,
-
-        [Parameter(Mandatory)]
-        [string]$Notes
-    )
-
-    Update-MgApplication -ApplicationId $AppId -Notes $Notes
-    Write-Host "Updated App Registration ($AppId) with notes: $Notes"
 }
 
 main
