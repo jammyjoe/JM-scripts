@@ -33,15 +33,12 @@ function Manage-AppRegistrations {
 }
 
 function Get-AllAppRegistrations {
-    $appRegs = Get-MgApplication -All
-    foreach ($app in $appRegs) {
-        Write-Host "App Name: $($app.DisplayName)"
-        Write-Host "Internal Notes: $($app.Notes)`n"
-    }
+    $appRegs = Get-MgApplication -All | Select-Object DisplayName, Notes
+    $appRegs | Format-Table -AutoSize
 }
 
 function Update-MissingInternalNotes {
-    $appRegs = Get-MgApplication -All | Where-Object { [string]::IsNullOrEmpty($_.Notes) }
+    $appRegs = Get-MgApplication -All | Where-Object { [string]::IsNullOrEmpty($_.Notes) } #Notes does not support filtering
     $defaultNote = "Last updated on $(Get-Date)."
 
     foreach ($app in $appRegs) {
