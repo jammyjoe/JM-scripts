@@ -1,35 +1,71 @@
-# Connect to Microsoft Graph (Make sure you have the necessary permissions)
-Connect-MgGraph -Scopes "Application.ReadWrite.All" -TenantId "e712b66c-2cb8-430e-848f-dbab4beb16df"
+function main {
+    $TenantId = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide MGIADPRD Tenant
+    $NameSuffix = "EXTADDS" # Provide the suffix to filter by
 
-# Define your App ID
-$appId = "cd98c0a4-8d2d-45b9-a176-84244c88f4fd"
+    $Parameters = @{
+        TenantId = $TenantId
+        NameSuffix = $NameSuffix
+    }
 
-# Step 1: Get the current application manifest
-$appManifest = Get-MgApplication -ApplicationId $appId
-$appManifest.RequiredResourceAccess | Format-Table -Property ResourceAppId, ResourceAccess
+    Remove-ManifestPermissions @Parameters
+}
 
-# Step 2: Check if RequiredResourceAccess exists and filter out Scope-type ResourceAccess
-if ($appManifest.RequiredResourceAccess) {
-    foreach ($requiredResource in $appManifest.RequiredResourceAccess) {
-        # Filter out all ResourceAccess of Type 'Scope'
-        $requiredResource.ResourceAccess = $requiredResource.ResourceAccess | Where-Object { $_.Type -ne 'Scope' }
+function Remove-ManifestPermissions
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [Guid]
+        $TenantId,
 
-        # If no ResourceAccess left after filtering, remove this RequiredResourceAccess
-        if ($requiredResource.ResourceAccess.Count -eq 0) {
-            # Remove the entire RequiredResourceAccess block if no ResourceAccess remains
-            $appManifest.RequiredResourceAccess = $appManifest.RequiredResourceAccess | Where-Object { $_ -ne $requiredResource }
+        [Parameter(Mandatory)]
+        [string]
+        $NameSuffix
+    )
+
+    $requiredScopes = @(
+        "Application.ReadWrite.All"
+    )
+
+    $null = Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId
+
+    # Get all B2C app registrations
+    $apps = Get-MgApplication -All | Where-Object { $_.DisplayName -like "*$NameSuffix" }
+
+    foreach ($app in $apps)
+    {
+        Write-Host "Reviewing App: $( $app.DisplayName ) - ID: $( $app.Id )"
+        $appManifest = Get-MgApplication -ApplicationId $app.Id
+
+        # Check if there are any requiredResourceAccess entries
+        if ($appManifest.RequiredResourceAccess.Count -gt 0)
+        {
+            Write-Host "Processing ResourceAppId: $( $app.DisplayName ) with $( $appManifest.RequiredResourceAccess[0].ResourceAccess.Count ) API Permissions."
+
+            # Remove all 'Scope' type permissions from the single RequiredResourceAccess entry
+            $filteredResourceAccess = $appManifest.RequiredResourceAccess[0].ResourceAccess | Where-Object { $_.Type -ne 'Scope' }
+
+            # If the filtering results in no permissions, update the application with an empty RequiredResourceAccess array
+            if ($filteredResourceAccess.Count -eq 0)
+            {
+                Write-Host "After filtering, no ResourceAccess entries remain. Removing API Permissions."
+                # Set the ResourceAccess to an empty array or null based on the requirement
+                $appManifest.RequiredResourceAccess[0].ResourceAccess = @()
+            }
+            else
+            {
+                Write-Host "After filtering, $( $filteredResourceAccess.Count ) ResourceAccess entries remain."
+                $appManifest.RequiredResourceAccess[0].ResourceAccess = $filteredResourceAccess
+            }
+
+            # Now update the app registration with the modified RequiredResourceAccess
+            Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $appManifest.RequiredResourceAccess
+        }
+        else
+        {
+            Write-Host "No API Permissions found for $( $app.DisplayName )"
         }
     }
+    Disconnect-MgGraph | Out-Null
 }
-
-# Step 3: Update the application manifest in Azure AD if there are changes
-if ($appManifest.RequiredResourceAccess.Count -gt 0) {
-    # Apply the updated manifest
-    Update-MgApplication -ApplicationId $appId -RequiredResourceAccess $appManifest.RequiredResourceAccess
-    $appManifest.RequiredResourceAccess | Format-Table -Property ResourceAppId, ResourceAccess
-    Write-Host "Application manifest updated successfully."
-} else {
-    Write-Host "No Scope-based ResourceAccess found. No changes made."
-}
-
-Disconnect-MgGraph | Out-Null
+main
