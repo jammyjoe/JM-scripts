@@ -5,6 +5,7 @@ function main {
     $Parameters = @{
         TenantId   = $TenantId
         NameSuffix = $NameSuffix
+        WhatIf     = $true
     }
 
     Remove-DelegatedApiPermissions @Parameters
@@ -33,7 +34,8 @@ function Remove-DelegatedApiPermissions {
     # Get all B2C App Reg with EXTADDS suffix
     $apps = Get-MgApplication -All | Where-Object { $_.DisplayName -like "*$NameSuffix" }
 
-    foreach ($app in $apps) {
+    foreach ($app in $apps) 
+    {
         Write-Host "Reviewing App: $($app.DisplayName)" -ForegroundColor Yellow
 
         # Get the Service Principal associated with the App Reg
@@ -41,44 +43,45 @@ function Remove-DelegatedApiPermissions {
         $apiPermissions = Get-MgServicePrincipalOauth2PermissionGrant -ServicePrincipal $servicePrincipal.Id
 
         # Remove Admin Consent for API Permissions
-        foreach ($perm in $apiPermissions) {
-            if ($PSCmdlet.ShouldProcess("Revoking admin consent from API permissions for $($app.DisplayName)")) {
-                Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf
-            }
+        foreach ($perm in $apiPermissions) 
+        {    
+            Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf
         }
 
         # Use the App Regs' requiredResourceAccess property to modify API Permissions
-        if ($app.RequiredResourceAccess.Count -gt 0) {
+        if ($app.RequiredResourceAccess.Count -gt 0) 
+        {
             $resourceAccess = $app.RequiredResourceAccess[0].ResourceAccess
             Write-Host " - Processing App registration: $($app.DisplayName) with $($resourceAccess.Count) API Permission(s)"
 
             $resourceAccess = $resourceAccess | Where-Object { $_.Type -eq 'Role' }
 
-            if ($resourceAccess.Count -gt 0) {
+            if ($resourceAccess.Count -gt 0) 
+            {
                 # Only keep Application Permissions (remove Delegated Permissions)
-                if ($PSCmdlet.ShouldProcess("Updating API permissions for $($app.DisplayName)")) {
-                    $app.RequiredResourceAccess[0].ResourceAccess = $resourceAccess
-                    Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $app.RequiredResourceAccess -WhatIf
-                    Write-Host " - $($app.DisplayName) has $($resourceAccess.Count) API Permission(s) remaining `n"
-                }
-            } elseif ($resourceAccess.Count -eq 0) {
+                $app.RequiredResourceAccess[0].ResourceAccess = $resourceAccess
+                Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $app.RequiredResourceAccess -WhatIf
+                Write-Host " - $($app.DisplayName) has $($resourceAccess.Count) API Permission(s) remaining `n"
+            } 
+           
+            elseif ($resourceAccess.Count -eq 0) 
+            {
                 # Remove all API Permissions if only Delegated Permissions exist
+                #### FIGURE OUT HOW TO USE UPDATE-MGAPPLICATION FOR THIS AS INVOKE DOES NOT SUPPORT WHATIFS
                 if ($PSCmdlet.ShouldProcess("Removing all API permissions for $($app.DisplayName)")) {
                     $uri = "https://graph.microsoft.com/v1.0/applications/$($app.Id)"
                     $body = @{
                         requiredResourceAccess = @()
                     } | ConvertTo-Json -Depth 3
 
-                    if ($WhatIfPreference) {
-                        Write-Host "What if: Performing the operation 'PATCH $uri' with body: $body"
-                    } else {
-                        Invoke-MgGraphRequest -Method PATCH -Uri $uri -Body $body -ContentType "application/json"
-                    }
-                    
+                    Invoke-MgGraphRequest -Method PATCH -Uri $uri -Body $body -ContentType "application/json" #-WhatIf
                     Write-Host " - All API permissions removed for $($app.DisplayName) `n"
                 }
             }
-        } else {
+        } 
+        
+        else 
+        {
             Write-Host " - No API Permissions found for $($app.DisplayName) `n"
         }
     }
