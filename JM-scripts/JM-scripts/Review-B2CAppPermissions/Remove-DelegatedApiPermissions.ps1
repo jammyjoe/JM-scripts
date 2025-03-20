@@ -16,7 +16,7 @@
 
 
 function main {
-    $TenantId   = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide MGIADPRD Tenant
+    $TenantId   = "" # Provide MGIADPRD Tenant
     $NameSuffix = "EXTADDS" # Provide the suffix to filter by
 
     $Parameters = @{
