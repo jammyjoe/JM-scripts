@@ -10,7 +10,7 @@
 # 0 - Predicates:
 #     Ensure you have installed the Az module into your Powershell environment (v8.1.0 available from UKHO.PSGallery)
 #
-# 1 - Run the script: `.\Remove-ManifestApiPermissions.ps1`
+# 1 - Run the script: `.\Remove-DelegatedApiPermissions.ps1`
 #
 # 2 - A browser login window will pop up when the Connect-MgGraph command is run
 
@@ -24,10 +24,10 @@ function main {
         NameSuffix = $NameSuffix
     }
 
-    Remove-ManifestPermissions @Parameters
+    Remove-DelegatedApiPermissions @Parameters
 }
 
-function Remove-ManifestPermissions
+function Remove-DelegatedApiPermissions
 {
     [CmdletBinding()]
     param (
@@ -55,7 +55,7 @@ function Remove-ManifestPermissions
 
     foreach ($app in $apps)
     {
-        Write-Host "Reviewing App: $($app.DisplayName)"
+        Write-Host "Reviewing App: $($app.DisplayName)" -ForegroundColor Yellow
 
         # Get the Service Principal associated with the App Reg
         $servicePrincipal = Get-MgServicePrincipal -Filter "AppId eq '$($app.AppId)'"
