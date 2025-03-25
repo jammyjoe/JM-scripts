@@ -1,11 +1,31 @@
+####################
+# WHAT IS THIS SCRIPT
+####################
+# Removes all Delegated Permissions from the API Permissions of all B2C App Registrations with the suffix EXTADDS
+# Used by Calypso as we no longer use Delegated Permissions and instead use client/secret to get an access tokem
+
+########################
+# HOW TO USE THIS SCRIPT
+########################
+# WARNING:
+# Setting $WhatIf to false will execute the script, it is defaulted to true to see what changes will be made and to prevent accidental runs
+#
+# 0 - Predicates:
+#     Ensure you have installed the Microsoft.Graph module into your Powershell environment (v1.6.0 available from UKHO.PSGallery)
+#      
+# 1 - Run the script: `.\Remove-DelegatedApiPermissions.ps1`
+#
+# 2 - A browser login window will pop up when the Connect-MgGraph command is runfunction
+
+
 function main {
     $TenantId   = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide MGIADPRD Tenant
     $NameSuffix = "EXTADDS" # Provide the suffix to filter by
-
+    $WhatIfPreference = $false # SET TO $false TO EXECUTE THE SCRIPT
+    
     $Parameters = @{
         TenantId   = $TenantId
         NameSuffix = $NameSuffix
-        WhatIf     = $true
     }
 
     Remove-DelegatedApiPermissions @Parameters
@@ -45,7 +65,10 @@ function Remove-DelegatedApiPermissions {
         # Remove Admin Consent for API Permissions
         foreach ($perm in $apiPermissions) 
         {    
-            Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf
+            if ($PSCmdlet.ShouldProcess("Remove-MgOauth2PermissionGrant", "Remove Admin Consent for $($perm.ClientId)")) {
+                Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf:$WhatIfPreference
+            }
+            #Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf
         }
 
         # Use the App Regs' requiredResourceAccess property to modify API Permissions
@@ -60,25 +83,29 @@ function Remove-DelegatedApiPermissions {
             {
                 # Only keep Application Permissions (remove Delegated Permissions)
                 $app.RequiredResourceAccess[0].ResourceAccess = $resourceAccess
-                Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $app.RequiredResourceAccess -WhatIf
+                Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $app.RequiredResourceAccess -WhatIf:$WhatIfPreference
                 Write-Host " - $($app.DisplayName) has $($resourceAccess.Count) API Permission(s) remaining `n"
-            } 
-           
-            elseif ($resourceAccess.Count -eq 0) 
+            }
+
+            elseif ($resourceAccess.Count -eq 0)
             {
                 # Remove all API Permissions if only Delegated Permissions exist
-                #### FIGURE OUT HOW TO USE UPDATE-MGAPPLICATION FOR THIS AS INVOKE DOES NOT SUPPORT WHATIFS
-                if ($PSCmdlet.ShouldProcess("Removing all API permissions for $($app.DisplayName)")) {
+                if ($WhatIfPreference -eq $false) {
                     $uri = "https://graph.microsoft.com/v1.0/applications/$($app.Id)"
                     $body = @{
                         requiredResourceAccess = @()
                     } | ConvertTo-Json -Depth 3
 
-                    Invoke-MgGraphRequest -Method PATCH -Uri $uri -Body $body -ContentType "application/json" #-WhatIf
-                    Write-Host " - All API permissions removed for $($app.DisplayName) `n"
+                    Invoke-MgGraphRequest -Method PATCH -Uri $uri -Body $body -ContentType "application/json"
+                    Write-Host " - All API permissions removed for $($app.DisplayName)"
+                }
+                else
+                {
+                    Write-Host "WhatIf -  Performing the operation "Update-MgApplication_UpdateExpanded" on target "Call remote 'PATCH /applications/{application-id}' operation"."
+                    Write-Host " - $($app.DisplayName) has $($resourceAccess.Count) API Permission(s) remaining `n"
                 }
             }
-        } 
+        }
         
         else 
         {
