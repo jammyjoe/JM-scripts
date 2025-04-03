@@ -21,7 +21,7 @@
 function main {
     $TenantId   = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide MGIADPRD Tenant
     $NameSuffix = "EXTADDS" # Provide the suffix to filter by
-    $WhatIfPreference = $false # SET TO $false TO EXECUTE THE SCRIPT
+    $WhatIfPreference = $false # Setting this to $false will execute the script
     
     $Parameters = @{
         TenantId   = $TenantId
@@ -65,10 +65,9 @@ function Remove-DelegatedApiPermissions {
         # Remove Admin Consent for API Permissions
         foreach ($perm in $apiPermissions) 
         {    
-            if ($PSCmdlet.ShouldProcess("Remove-MgOauth2PermissionGrant", "Remove Admin Consent for $($perm.ClientId)")) {
+            if ($PSCmdlet.ShouldProcess("Remove-MgOauth2PermissionGrant", "Remove Admin Consent for $($app.DisplayName)")) {
                 Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf:$WhatIfPreference
             }
-            #Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf
         }
 
         # Use the App Regs' requiredResourceAccess property to modify API Permissions
@@ -77,17 +76,24 @@ function Remove-DelegatedApiPermissions {
             $resourceAccess = $app.RequiredResourceAccess[0].ResourceAccess
             Write-Host " - Processing App registration: $($app.DisplayName) with $($resourceAccess.Count) API Permission(s)"
 
-            $resourceAccess = $resourceAccess | Where-Object { $_.Type -eq 'Role' }
+            $permissions = $resourceAccess | Group-Object Type -AsHashTable
 
-            if ($resourceAccess.Count -gt 0) 
+            $delegatedPermissions = $permissions['Scope']
+            $nonDelegatedPermissions = $permissions['Role']
+
+            if ($nonDelegatedPermissions.Count -gt 0) 
             {
                 # Only keep Application Permissions (remove Delegated Permissions)
-                $app.RequiredResourceAccess[0].ResourceAccess = $resourceAccess
-                Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $app.RequiredResourceAccess -WhatIf:$WhatIfPreference
+                $app.RequiredResourceAccess[0].ResourceAccess = $nonDelegatedPermissions
+                if ($PSCmdlet.ShouldProcess("Update-MgApplication", "Removing $($delegatedPermissions.Count) Delegated Permissions for $($app.DisplayName) and keeping $($nonDelegatedPermissions.Count) API Permission(s)"))
+                {
+                    Update-MgApplication -ApplicationId $app.Id -RequiredResourceAccess $app.RequiredResourceAccess -WhatIf:$WhatIfPreference
+                }
+                $resourceAccess = $app.RequiredResourceAccess[0].ResourceAccess
                 Write-Host " - $($app.DisplayName) has $($resourceAccess.Count) API Permission(s) remaining `n"
             }
 
-            elseif ($resourceAccess.Count -eq 0)
+            elseif ($nonDelegatedPermissions.Count -eq 0)
             {
                 # Remove all API Permissions if only Delegated Permissions exist
                 if ($WhatIfPreference -eq $false) {
@@ -95,14 +101,12 @@ function Remove-DelegatedApiPermissions {
                     $body = @{
                         requiredResourceAccess = @()
                     } | ConvertTo-Json -Depth 3
-
                     Invoke-MgGraphRequest -Method PATCH -Uri $uri -Body $body -ContentType "application/json"
                     Write-Host " - All API permissions removed for $($app.DisplayName)"
                 }
                 else
                 {
-                    Write-Host "WhatIf -  Performing the operation "Update-MgApplication_UpdateExpanded" on target "Call remote 'PATCH /applications/{application-id}' operation"."
-                    Write-Host " - $($app.DisplayName) has $($resourceAccess.Count) API Permission(s) remaining `n"
+                    Write-Host "WhatIf: Removing $($delegatedPermissions.Count) Delegated Permissions for $($app.DisplayName) on target Invoke-MgGraphRequest."
                 }
             }
         }
