@@ -1,8 +1,8 @@
 ####################
 # WHAT IS THIS SCRIPT
 ####################
-# Removes all Delegated Permissions from the API Permissions of all B2C App Registrations with the suffix EXTADDS
-# Used by Calypso as we no longer use Delegated Permissions and instead use client/secret to get an access tokem
+# Removes all Delegated Permissions from the API Permissions of all B2C App Registrations which contains 'EXTADDS'
+# Used by Calypso as we no longer use Delegated Permissions and instead use client/secret to get an access token
 
 ########################
 # HOW TO USE THIS SCRIPT
@@ -15,17 +15,15 @@
 #      
 # 1 - Run the script: `.\Remove-DelegatedApiPermissions.ps1`
 #
-# 2 - A browser login window will pop up when the Connect-MgGraph command is runfunction
+# 2 - A browser login window will pop up when the Connect-MgGraph command has executed
 
 
 function main {
     $TenantId   = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide MGIADPRD Tenant
-    $NameSuffix = "EXTADDS" # Provide the suffix to filter by
     $WhatIfPreference = $false # Setting this to $false will execute the script
     
     $Parameters = @{
         TenantId   = $TenantId
-        NameSuffix = $NameSuffix
     }
 
     Remove-DelegatedApiPermissions @Parameters
@@ -36,11 +34,7 @@ function Remove-DelegatedApiPermissions {
     param (
         [Parameter(Mandatory)]
         [Guid]
-        $TenantId,
-
-        [Parameter(Mandatory)]
-        [string]
-        $NameSuffix
+        $TenantId
     )
 
     $requiredScopes = @(
@@ -51,8 +45,8 @@ function Remove-DelegatedApiPermissions {
     # Connect to Microsoft Graph
     $null = Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId
 
-    # Get all B2C App Reg with EXTADDS suffix
-    $apps = Get-MgApplication -All | Where-Object { $_.DisplayName -like "*$NameSuffix" }
+    # Get all B2C App Reg with EXTADDS in the display name
+    $apps = Get-MgApplication -ConsistencyLevel eventual -Count appCount -Search '"displayName:EXTADDS"'
 
     foreach ($app in $apps) 
     {
