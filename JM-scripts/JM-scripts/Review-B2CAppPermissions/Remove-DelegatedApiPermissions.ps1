@@ -1,7 +1,7 @@
 ####################
 # WHAT IS THIS SCRIPT
 ####################
-# Removes all Delegated Permissions from the API Permissions of all B2C App Registrations which contains 'EXTADDS'
+# Removes all Delegated Permissions from the API Permissions of B2C App Registrations that contains 'EXTADDS'
 # Used by Calypso as we no longer use Delegated Permissions and instead use client/secret to get an access token
 
 ########################
@@ -13,15 +13,15 @@
 # 0 - Predicates:
 #     Ensure you have installed the Microsoft.Graph module into your Powershell environment (v1.6.0 available from UKHO.PSGallery)
 #      
-# 1 - Run the script: `.\Remove-DelegatedApiPermissions.ps1`
+# 1 - Run the script: `.\Remove-B2CDelegatedApiPermissions.ps1`
 #
 # 2 - A browser login window will pop up when the Connect-MgGraph command has executed
 
 
 function main {
     $TenantId   = "e712b66c-2cb8-430e-848f-dbab4beb16df" # Provide MGIADPRD Tenant
-    $WhatIfPreference = $false # Setting this to $false will execute the script
-    
+    $WhatIfPreference = $true # Setting this to $false will execute the script
+
     $Parameters = @{
         TenantId   = $TenantId
     }
@@ -43,12 +43,12 @@ function Remove-DelegatedApiPermissions {
     )
 
     # Connect to Microsoft Graph
-    $null = Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId
+    Connect-MgGraph -Scopes $requiredScopes -TenantId $TenantId -NoWelcome
 
-    # Get all B2C App Reg with EXTADDS in the display name
+    # Get all B2C App Reg with 'EXTADDS' in the display name
     $apps = Get-MgApplication -ConsistencyLevel eventual -Count appCount -Search '"displayName:EXTADDS"'
 
-    foreach ($app in $apps) 
+    foreach ($app in $apps)
     {
         Write-Host "Reviewing App: $($app.DisplayName)" -ForegroundColor Yellow
 
@@ -57,15 +57,15 @@ function Remove-DelegatedApiPermissions {
         $apiPermissions = Get-MgServicePrincipalOauth2PermissionGrant -ServicePrincipal $servicePrincipal.Id
 
         # Remove Admin Consent for API Permissions
-        foreach ($perm in $apiPermissions) 
-        {    
+        foreach ($perm in $apiPermissions)
+        {
             if ($PSCmdlet.ShouldProcess("Remove-MgOauth2PermissionGrant", "Remove Admin Consent for $($app.DisplayName)")) {
                 Remove-MgOauth2PermissionGrant -Oauth2PermissionGrantId $perm.Id -WhatIf:$WhatIfPreference
             }
         }
 
         # Use the App Regs' requiredResourceAccess property to modify API Permissions
-        if ($app.RequiredResourceAccess.Count -gt 0) 
+        if ($app.RequiredResourceAccess.Count -gt 0)
         {
             $resourceAccess = $app.RequiredResourceAccess[0].ResourceAccess
             Write-Host " - Processing App registration: $($app.DisplayName) with $($resourceAccess.Count) API Permission(s)"
@@ -75,7 +75,7 @@ function Remove-DelegatedApiPermissions {
             $delegatedPermissions = $permissions['Scope']
             $nonDelegatedPermissions = $permissions['Role']
 
-            if ($nonDelegatedPermissions.Count -gt 0) 
+            if ($nonDelegatedPermissions.Count -gt 0)
             {
                 # Only keep Application Permissions (remove Delegated Permissions)
                 $app.RequiredResourceAccess[0].ResourceAccess = $nonDelegatedPermissions
@@ -104,8 +104,8 @@ function Remove-DelegatedApiPermissions {
                 }
             }
         }
-        
-        else 
+
+        else
         {
             Write-Host " - No API Permissions found for $($app.DisplayName) `n"
         }
